@@ -2,16 +2,16 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>AR Котенок - Фиксированная позиция</title>
+    <title>Чистый AR Котенок</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
             overflow: hidden;
             touch-action: none;
+            background: black;
         }
         
         #video {
@@ -24,213 +24,35 @@
             z-index: 1;
         }
         
-        #ui {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 3;
-            pointer-events: none;
-        }
-        
-        #info {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.85);
-            color: white;
-            padding: 15px;
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-            pointer-events: auto;
-            font-size: 14px;
-        }
-        
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            background: rgba(255,255,255,0.95);
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            pointer-events: auto;
-        }
-        
-        .btn {
-            padding: 12px 18px;
-            margin: 4px;
-            border: none;
-            border-radius: 8px;
-            background: linear-gradient(135deg, #9B59B6 0%, #8E44AD 100%);
-            color: white;
-            font-size: 13px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .btn:active {
-            transform: scale(0.95);
-        }
-        
         #movement-area {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 2;
-            pointer-events: auto;
+            z-index: 3;
             cursor: grab;
         }
         
         #movement-area:active {
             cursor: grabbing;
         }
-        
-        #position-info {
-            position: absolute;
-            top: 50%;
-            right: 15px;
-            transform: translateY(-50%);
-            background: rgba(0,0,0,0.75);
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            pointer-events: none;
-        }
-        
-        #loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.9);
-            color: white;
-            padding: 25px;
-            border-radius: 15px;
-            text-align: center;
-            z-index: 5;
-            pointer-events: auto;
-        }
-        
-        .distance-ring {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border: 2px solid rgba(155, 89, 182, 0.5);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 4;
-        }
-        
-        #ring-close {
-            width: 100px;
-            height: 100px;
-        }
-        
-        #ring-medium {
-            width: 200px;
-            height: 200px;
-        }
-        
-        #ring-far {
-            width: 300px;
-            height: 300px;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.05); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-        
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-        
-        @media (max-width: 600px) {
-            .btn {
-                padding: 10px 14px;
-                font-size: 11px;
-                margin: 3px;
-            }
-            
-            #info, #controls {
-                margin: 10px;
-                padding: 12px;
-            }
-        }
     </style>
 </head>
 <body>
     <video id="video" autoplay playsinline muted></video>
-    
-    <!-- Кольца для визуализации расстояния -->
-    <div id="ring-close" class="distance-ring"></div>
-    <div id="ring-medium" class="distance-ring"></div>
-    <div id="ring-far" class="distance-ring"></div>
-    
-    <!-- Область для движения камеры -->
     <div id="movement-area"></div>
-    
-    <div id="ui">
-        <div id="loading">
-            <div class="pulse">🎯</div>
-            <p>Инициализация 3D AR...</p>
-            <p style="font-size: 12px;">Камера без зума, объекты в пространстве</p>
-        </div>
-        
-        <div id="info" style="display: none;">
-            <h3>🌟 AR Котенок в Пространстве</h3>
-            <p><strong>Свайпайте</strong> чтобы двигать камеру</p>
-            <p><strong>Пинч</strong> чтобы приблизить/отдалить</p>
-            <p>• Котята: <span id="kitten-count">0</span></p>
-            <p>• Котенок <strong>ОСТАЕТСЯ НА МЕСТЕ</strong> в мире!</p>
-        </div>
-        
-        <div id="position-info">
-            <div>👁️ Камера X: <span id="cam-x">0</span></div>
-            <div>👁️ Камера Y: <span id="cam-y">0</span></div>
-            <div>👁️ Камера Z: <span id="cam-z">3</span></div>
-            <div>📏 Расстояние: <span id="distance">3.0м</span></div>
-            <div>🎯 Угол: <span id="angle">0°</span></div>
-        </div>
-        
-        <div id="controls" style="display: none;">
-            <button class="btn" onclick="addKitten()">🐱 Добавить котенка</button>
-            <button class="btn" onclick="moveCamera('forward')">⬆️ Вперед</button>
-            <button class="btn" onclick="moveCamera('back')">⬇️ Назад</button>
-            <button class="btn" onclick="moveCamera('left')">⬅️ Влево</button>
-            <button class="btn" onclick="moveCamera('right')">➡️ Вправо</button>
-            <button class="btn" onclick="resetCamera()">🏠 Центр</button>
-            <button class="btn" onclick="clearAll()">🗑️ Очистить</button>
-        </div>
-    </div>
 
     <script>
         // Глобальные переменные
         let video, scene, camera, renderer;
-        let kittens = [];
+        let kitten;
         
-        // Позиция камеры
+        // Позиция камеры (пользователя)
         let cameraPosition = {
             x: 0,
-            y: 0,
-            z: 3
-        };
-        
-        let cameraTarget = {
-            x: 0,
-            y: 0,
-            z: 0
+            y: 1.6, // Высота человеческих глаз
+            z: 2
         };
         
         // Управление касаниями
@@ -243,18 +65,6 @@
             startDistance: 0
         };
         
-        // UI элементы
-        const loadingDiv = document.getElementById('loading');
-        const infoDiv = document.getElementById('info');
-        const controlsDiv = document.getElementById('controls');
-        const movementArea = document.getElementById('movement-area');
-        const kittenCountSpan = document.getElementById('kitten-count');
-        const camXSpan = document.getElementById('cam-x');
-        const camYSpan = document.getElementById('cam-y');
-        const camZSpan = document.getElementById('cam-z');
-        const distanceSpan = document.getElementById('distance');
-        const angleSpan = document.getElementById('angle');
-        
         // Инициализация
         async function init() {
             try {
@@ -265,79 +75,61 @@
                 // Инициализация 3D
                 init3D();
                 
+                // Создаем котенка в комнате
+                createKittenInRoom();
+                
                 // События управления
-                setupTouchControls();
+                setupControls();
                 
                 // Запуск рендеринга
                 animate();
                 
-                // Скрытие загрузки
-                loadingDiv.style.display = 'none';
-                infoDiv.style.display = 'block';
-                controlsDiv.style.display = 'block';
-                
-                // Добавляем первого котенка в ЦЕНТР МИРА (0,0,0)
-                setTimeout(() => {
-                    addKittenAtPosition(0, 0, 0);
-                }, 500);
-                
-                console.log('AR с фиксированными объектами инициализирован!');
+                console.log('Чистый AR запущен');
                 
             } catch (error) {
-                console.error('Ошибка инициализации:', error);
-                loadingDiv.innerHTML = `
-                    <div>❌</div>
-                    <p>Ошибка: ${error.message}</p>
-                    <button class="btn" onclick="location.reload()">🔄 Перезагрузить</button>
-                `;
+                console.error('Ошибка:', error);
+                document.body.innerHTML = '<div style="color:white;padding:20px;text-align:center;">Ошибка камеры</div>';
             }
         }
         
         async function startCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { 
-                        facingMode: 'environment',
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    },
-                    audio: false
-                });
-                
-                video.srcObject = stream;
-                
-                return new Promise((resolve) => {
-                    video.onloadedmetadata = () => {
-                        video.play();
-                        resolve();
-                    };
-                });
-                
-            } catch (error) {
-                throw new Error('Камера недоступна');
-            }
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                },
+                audio: false
+            });
+            
+            video.srcObject = stream;
+            
+            return new Promise((resolve) => {
+                video.onloadedmetadata = () => {
+                    video.play();
+                    resolve();
+                };
+            });
         }
         
         function init3D() {
             // Сцена
             scene = new THREE.Scene();
             
-            // Камера с правильной настройкой
+            // Камера (как человеческий глаз)
             camera = new THREE.PerspectiveCamera(
-                60,  // Угол обзора
+                70, // Поле зрения как у человека
                 window.innerWidth / window.innerHeight,
-                0.1,  // Ближняя плоскость
-                50    // Дальняя плоскость
+                0.01, // Очень близко
+                100   // Далеко
             );
             
-            // Устанавливаем камеру в начальную позицию
             updateCameraPosition();
             
             // Рендерер
             renderer = new THREE.WebGLRenderer({ 
                 alpha: true,
-                antialias: true,
-                precision: 'highp'
+                antialias: true
             });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.domElement.style.position = 'absolute';
@@ -347,59 +139,103 @@
             renderer.domElement.style.pointerEvents = 'none';
             document.body.appendChild(renderer.domElement);
             
-            // Освещение
-            setupLighting();
-            
-            // Добавляем систему координат для отладки
-            addCoordinateSystem();
+            // Реалистичное освещение
+            setupRealisticLighting();
         }
         
-        function setupLighting() {
-            // Окружающий свет
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        function setupRealisticLighting() {
+            // Окружающий свет (как в комнате)
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
             
-            // Направленный свет
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-            directionalLight.position.set(3, 3, 3);
+            // Основной свет (как от окна/лампы)
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(2, 4, 2);
+            directionalLight.castShadow = true;
             scene.add(directionalLight);
             
-            // Дополнительный свет
-            const pointLight = new THREE.PointLight(0x9B59B6, 0.4, 10);
-            pointLight.position.set(-2, 2, 2);
-            scene.add(pointLight);
+            // Мягкий заполняющий свет
+            const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+            fillLight.position.set(-2, 2, -2);
+            scene.add(fillLight);
         }
         
-        function addCoordinateSystem() {
-            // Добавляем невидимые оси для отладки
-            const axesHelper = new THREE.AxesHelper(1);
-            axesHelper.visible = false; // Скрываем, но оставляем для системы координат
-            scene.add(axesHelper);
+        function createKittenInRoom() {
+            // Создаем котенка в фиксированной позиции "комнаты"
+            const kittenGroup = new THREE.Group();
             
-            // Добавляем точку в центре мира
-            const centerGeometry = new THREE.SphereGeometry(0.05, 16, 16);
-            const centerMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xff0000,
-                transparent: true,
-                opacity: 0.8
-            });
-            const centerPoint = new THREE.Mesh(centerGeometry, centerMaterial);
-            centerPoint.position.set(0, 0, 0); // ТОЧНО в центре мира
-            scene.add(centerPoint);
+            // Размещаем котенка прямо перед пользователем
+            // Как будто он стоит на столе на расстоянии 1.5 метра
+            kittenGroup.position.set(
+                0,     // По центру
+                1,     // На высоте стола
+                -1.5   // Перед пользователем
+            );
+            
+            // Загрузка вашего котенка
+            const loader = new THREE.TextureLoader();
+            loader.load('kitten.jpg', 
+                function(texture) {
+                    console.log('✅ Котенок размещен в комнате');
+                    createKittenMesh(kittenGroup, texture);
+                },
+                undefined,
+                function(error) {
+                    console.log('Создаем котенка без текстуры');
+                    createKittenMesh(kittenGroup, null);
+                }
+            );
+            
+            scene.add(kittenGroup);
+            kitten = kittenGroup;
         }
         
-        function setupTouchControls() {
-            // Тач-события для движения камеры
+        function createKittenMesh(group, texture) {
+            // Реалистичный размер картины (30x30 см)
+            const geometry = new THREE.PlaneGeometry(0.3, 0.3);
+            
+            let material;
+            if (texture) {
+                material = new THREE.MeshLambertMaterial({ 
+                    map: texture,
+                    transparent: false,
+                    side: THREE.DoubleSide
+                });
+            } else {
+                // Fallback - фиолетовый квадрат
+                material = new THREE.MeshLambertMaterial({ 
+                    color: 0x9B59B6
+                });
+            }
+            
+            const kittenMesh = new THREE.Mesh(geometry, material);
+            group.add(kittenMesh);
+            
+            // Простая рамка (как у настоящей картины)
+            const frameGeometry = new THREE.RingGeometry(0.16, 0.18, 32);
+            const frameMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0x8B4513, // Коричневая рамка
+                transparent: false
+            });
+            const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+            frame.position.z = -0.001;
+            group.add(frame);
+            
+            console.log('Котенок создан как настоящая картина');
+        }
+        
+        function setupControls() {
+            const movementArea = document.getElementById('movement-area');
+            
+            // Тач-управление (как движение головы)
             movementArea.addEventListener('touchstart', function(event) {
                 if (event.touches.length === 1) {
-                    // Одним пальцем - поворот камеры
                     touches.startX = event.touches[0].clientX;
                     touches.startY = event.touches[0].clientY;
                     touches.lastX = touches.startX;
                     touches.lastY = touches.startY;
                     touches.isMoving = true;
                 } else if (event.touches.length === 2) {
-                    // Двумя пальцами - зум
                     const dx = event.touches[0].clientX - event.touches[1].clientX;
                     const dy = event.touches[0].clientY - event.touches[1].clientY;
                     touches.startDistance = Math.sqrt(dx * dx + dy * dy);
@@ -409,14 +245,13 @@
             
             movementArea.addEventListener('touchmove', function(event) {
                 if (event.touches.length === 1 && touches.isMoving) {
-                    // Поворот вокруг центра
+                    // Поворот головы (камеры)
                     const deltaX = event.touches[0].clientX - touches.lastX;
                     const deltaY = event.touches[0].clientY - touches.lastY;
                     
-                    // Поворачиваем камеру вокруг центра мира (0,0,0)
-                    const sensitivity = 0.01;
+                    const sensitivity = 0.005;
                     
-                    // Горизонтальный поворот (вокруг Y-оси)
+                    // Поворот вокруг вертикальной оси (как поворот головы)
                     const angleY = deltaX * sensitivity;
                     const cosY = Math.cos(angleY);
                     const sinY = Math.sin(angleY);
@@ -427,40 +262,64 @@
                     cameraPosition.x = newX;
                     cameraPosition.z = newZ;
                     
-                    // Вертикальный поворот
+                    // Вертикальный поворот (наклон головы)
                     cameraPosition.y += deltaY * sensitivity;
-                    cameraPosition.y = Math.max(-3, Math.min(3, cameraPosition.y)); // Ограничиваем
+                    cameraPosition.y = Math.max(0.5, Math.min(3, cameraPosition.y));
                     
                     updateCameraPosition();
-                    updatePositionInfo();
                     
                     touches.lastX = event.touches[0].clientX;
                     touches.lastY = event.touches[0].clientY;
                     
                 } else if (event.touches.length === 2) {
-                    // Зум
+                    // Приближение/отдаление (как шаг вперед/назад)
                     const dx = event.touches[0].clientX - event.touches[1].clientX;
                     const dy = event.touches[0].clientY - event.touches[1].clientY;
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     
                     if (touches.startDistance > 0) {
                         const zoomFactor = distance / touches.startDistance;
-                        const currentDistance = Math.sqrt(
-                            cameraPosition.x * cameraPosition.x + 
-                            cameraPosition.y * cameraPosition.y + 
-                            cameraPosition.z * cameraPosition.z
+                        
+                        // Двигаемся к/от котенка
+                        const direction = new THREE.Vector3(
+                            kitten.position.x - cameraPosition.x,
+                            0, // Не меняем высоту
+                            kitten.position.z - cameraPosition.z
+                        ).normalize();
+                        
+                        const moveAmount = (zoomFactor - 1) * 0.5;
+                        cameraPosition.x += direction.x * moveAmount;
+                        cameraPosition.z += direction.z * moveAmount;
+                        
+                        // Ограничиваем расстояние (не можем пройти сквозь котенка)
+                        const distanceToKitten = Math.sqrt(
+                            Math.pow(cameraPosition.x - kitten.position.x, 2) +
+                            Math.pow(cameraPosition.z - kitten.position.z, 2)
                         );
                         
-                        let newDistance = currentDistance / zoomFactor;
-                        newDistance = Math.max(0.5, Math.min(10, newDistance)); // Ограничиваем зум
-                        
-                        const scale = newDistance / currentDistance;
-                        cameraPosition.x *= scale;
-                        cameraPosition.y *= scale;
-                        cameraPosition.z *= scale;
+                        if (distanceToKitten < 0.3) {
+                            // Слишком близко - отодвигаем
+                            const pushDirection = new THREE.Vector3(
+                                cameraPosition.x - kitten.position.x,
+                                0,
+                                cameraPosition.z - kitten.position.z
+                            ).normalize();
+                            
+                            cameraPosition.x = kitten.position.x + pushDirection.x * 0.3;
+                            cameraPosition.z = kitten.position.z + pushDirection.z * 0.3;
+                        } else if (distanceToKitten > 5) {
+                            // Слишком далеко - приближаем
+                            const pullDirection = new THREE.Vector3(
+                                kitten.position.x - cameraPosition.x,
+                                0,
+                                kitten.position.z - cameraPosition.z
+                            ).normalize();
+                            
+                            cameraPosition.x = kitten.position.x - pullDirection.x * 5;
+                            cameraPosition.z = kitten.position.z - pullDirection.z * 5;
+                        }
                         
                         updateCameraPosition();
-                        updatePositionInfo();
                     }
                     
                     touches.startDistance = distance;
@@ -476,190 +335,31 @@
         }
         
         function updateCameraPosition() {
-            // Устанавливаем позицию камеры
+            // Устанавливаем позицию камеры (глаз пользователя)
             camera.position.set(cameraPosition.x, cameraPosition.y, cameraPosition.z);
             
-            // Камера ВСЕГДА смотрит на центр мира (0,0,0)
-            camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
-        }
-        
-        function addKitten() {
-            // Добавляем котенка в случайную позицию вокруг центра
-            const angle = Math.random() * Math.PI * 2;
-            const radius = 1 + Math.random() * 2;
-            const height = (Math.random() - 0.5) * 2;
-            
-            const x = Math.cos(angle) * radius;
-            const z = Math.sin(angle) * radius;
-            
-            addKittenAtPosition(x, height, z);
-        }
-        
-        function addKittenAtPosition(x, y, z) {
-            // Создаем котенка в ТОЧНОЙ позиции мира
-            const kittenGroup = new THREE.Group();
-            kittenGroup.position.set(x, y, z); // ФИКСИРОВАННАЯ позиция в мире
-            
-            console.log(`Котенок создан в позиции: ${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)}`);
-            
-            // Загрузка текстуры
-            const loader = new THREE.TextureLoader();
-            loader.load('kitten.jpg', 
-                function(texture) {
-                    console.log('✅ Котенок размещен в фиксированной позиции мира!');
-                    createKittenMesh(kittenGroup, texture);
-                },
-                undefined,
-                function(error) {
-                    console.log('Создаем fallback котенка');
-                    createKittenMesh(kittenGroup, null);
-                }
-            );
-            
-            scene.add(kittenGroup);
-            kittens.push(kittenGroup);
-            updateKittenCount();
-        }
-        
-        function createKittenMesh(group, texture) {
-            // Основная плоскость котенка
-            const geometry = new THREE.PlaneGeometry(0.8, 0.8);
-            
-            let material;
-            if (texture) {
-                material = new THREE.MeshLambertMaterial({ 
-                    map: texture,
-                    transparent: true,
-                    side: THREE.DoubleSide
-                });
-            } else {
-                material = new THREE.MeshLambertMaterial({ 
-                    color: 0x9B59B6,
-                    transparent: true,
-                    opacity: 0.8
-                });
-            }
-            
-            const kittenMesh = new THREE.Mesh(geometry, material);
-            group.add(kittenMesh);
-            
-            // Рамка
-            const frameGeometry = new THREE.RingGeometry(0.42, 0.45, 32);
-            const frameMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xFFD700,
-                transparent: true,
-                opacity: 0.8
-            });
-            const frame = new THREE.Mesh(frameGeometry, frameMaterial);
-            frame.position.z = -0.01;
-            group.add(frame);
-            
-            // Котенок всегда поворачивается к камере
-            group.userData.lookAtCamera = true;
-        }
-        
-        // Управляющие функции
-        function moveCamera(direction) {
-            const speed = 0.5;
-            
-            switch(direction) {
-                case 'forward':
-                    const forwardDir = new THREE.Vector3(0, 0, -speed);
-                    forwardDir.applyQuaternion(camera.quaternion);
-                    cameraPosition.x += forwardDir.x;
-                    cameraPosition.y += forwardDir.y;
-                    cameraPosition.z += forwardDir.z;
-                    break;
-                case 'back':
-                    const backDir = new THREE.Vector3(0, 0, speed);
-                    backDir.applyQuaternion(camera.quaternion);
-                    cameraPosition.x += backDir.x;
-                    cameraPosition.y += backDir.y;
-                    cameraPosition.z += backDir.z;
-                    break;
-                case 'left':
-                    const leftDir = new THREE.Vector3(-speed, 0, 0);
-                    leftDir.applyQuaternion(camera.quaternion);
-                    cameraPosition.x += leftDir.x;
-                    cameraPosition.z += leftDir.z;
-                    break;
-                case 'right':
-                    const rightDir = new THREE.Vector3(speed, 0, 0);
-                    rightDir.applyQuaternion(camera.quaternion);
-                    cameraPosition.x += rightDir.x;
-                    cameraPosition.z += rightDir.z;
-                    break;
-            }
-            
-            updateCameraPosition();
-            updatePositionInfo();
-        }
-        
-        function resetCamera() {
-            cameraPosition.x = 0;
-            cameraPosition.y = 0;
-            cameraPosition.z = 3;
-            
-            updateCameraPosition();
-            updatePositionInfo();
-        }
-        
-        function clearAll() {
-            kittens.forEach(kitten => {
-                scene.remove(kitten);
-            });
-            kittens = [];
-            updateKittenCount();
-        }
-        
-        function updatePositionInfo() {
-            camXSpan.textContent = cameraPosition.x.toFixed(1);
-            camYSpan.textContent = cameraPosition.y.toFixed(1);
-            camZSpan.textContent = cameraPosition.z.toFixed(1);
-            
-            const distance = Math.sqrt(
-                cameraPosition.x * cameraPosition.x + 
-                cameraPosition.y * cameraPosition.y + 
-                cameraPosition.z * cameraPosition.z
-            );
-            distanceSpan.textContent = distance.toFixed(1) + 'м';
-            
-            const angle = Math.atan2(cameraPosition.x, cameraPosition.z) * 180 / Math.PI;
-            angleSpan.textContent = Math.round(angle) + '°';
-        }
-        
-        function updateKittenCount() {
-            kittenCountSpan.textContent = kittens.length;
+            // Камера смотрит в направлении котенка
+            camera.lookAt(kitten.position);
         }
         
         function animate() {
             requestAnimationFrame(animate);
             
-            // Котята всегда поворачиваются к камере
-            kittens.forEach(kitten => {
-                if (kitten.userData.lookAtCamera) {
-                    kitten.lookAt(camera.position);
-                }
-            });
-            
-            // Обновление позиционной информации
-            updatePositionInfo();
-            
-            // Рендер
+            // Рендер сцены
             renderer.render(scene, camera);
         }
         
-        // Обработка ресайза
+        // Обработка изменения размера
         window.addEventListener('resize', function() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
         
-        // Запуск
+        // Запуск при загрузке
         window.addEventListener('load', init);
         
-        console.log('🌟 AR с фиксированными объектами в пространстве загружен!');
+        console.log('🎯 Чистый AR готов');
     </script>
 </body>
 </html>

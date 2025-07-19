@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Тест камеры</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #000;
+            color: white;
+        }
+        
+        #video {
+            width: 100%;
+            max-width: 400px;
+            border: 2px solid #4CAF50;
+            margin: 20px 0;
+        }
+        
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        #status {
+            margin: 20px;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📱 Тест камеры для AR</h1>
+    
+    <div id="status">
+        <p>Статус: Готов к запуску</p>
+    </div>
+    
+    <button onclick="startCamera()">🎥 Включить камеру</button>
+    <button onclick="stopCamera()">⏹️ Остановить</button>
+    
+    <br><br>
+    
+    <video id="video" autoplay playsinline muted></video>
+    
+    <div>
+        <p><strong>Если камера работает здесь - значит проблема была в AR.js!</strong></p>
+        <p>Тогда создам улучшенную AR-версию</p>
+    </div>
+
+    <script>
+        let stream = null;
+        const video = document.getElementById('video');
+        const status = document.getElementById('status');
+        
+        function updateStatus(message) {
+            status.innerHTML = `<p>Статус: ${message}</p>`;
+            console.log(message);
+        }
+        
+        async function startCamera() {
+            try {
+                updateStatus('Запрашиваем доступ к камере...');
+                
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment' // Задняя камера
+                    },
+                    audio: false
+                });
+                
+                video.srcObject = stream;
+                updateStatus('✅ Камера работает!');
+                
+            } catch (error) {
+                console.error('Ошибка камеры:', error);
+                updateStatus(`❌ Ошибка: ${error.message}`);
+                
+                // Попробуем любую камеру
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: false
+                    });
+                    video.srcObject = stream;
+                    updateStatus('✅ Камера работает (передняя)!');
+                } catch (error2) {
+                    updateStatus(`❌ Камера недоступна: ${error2.message}`);
+                }
+            }
+        }
+        
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                updateStatus('Камера остановлена');
+            }
+        }
+        
+        // Автозапуск при загрузке
+        window.addEventListener('load', () => {
+            updateStatus('Страница загружена. Нажмите кнопку для запуска камеры.');
+        });
+    </script>
+</body>
+</html>

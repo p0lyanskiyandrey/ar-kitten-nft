@@ -103,36 +103,37 @@
         }
         
         #crosshair {
-            position: absolute;
+            position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 40px;
-            height: 40px;
+            width: 60px;
+            height: 60px;
             z-index: 4;
             pointer-events: none;
+            border: 3px solid #FF6B9D;
+            border-radius: 50%;
+            background: rgba(255, 107, 157, 0.2);
+            box-shadow: 0 0 20px rgba(255, 107, 157, 0.6);
+            animation: pulse-crosshair 2s infinite;
+        }
+        
+        @keyframes pulse-crosshair {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.7; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
         
         .crosshair-line {
-            position: absolute;
-            background: rgba(255,255,255,0.8);
-            border-radius: 2px;
+            display: none;
         }
         
         .crosshair-h {
-            top: 50%;
-            left: 10%;
-            right: 10%;
-            height: 2px;
-            transform: translateY(-50%);
+            display: none;
         }
         
         .crosshair-v {
-            left: 50%;
-            top: 10%;
-            bottom: 10%;
-            width: 2px;
-            transform: translateX(-50%);
+            display: none;
         }
         
         #loading {
@@ -177,10 +178,7 @@
     <video id="video" autoplay playsinline muted></video>
     <canvas id="canvas"></canvas>
     
-    <div id="crosshair">
-        <div class="crosshair-line crosshair-h"></div>
-        <div class="crosshair-line crosshair-v"></div>
-    </div>
+    <div id="crosshair"></div>
     
     <div id="tap-area"></div>
     
@@ -193,9 +191,10 @@
         
         <div id="info" style="display: none;">
             <h3>🎯 Simple AR Котенок</h3>
-            <p><strong>Нажмите на экран</strong> чтобы разместить котенка</p>
+            <p><strong>Нажмите на розовый кружок</strong> чтобы разместить котенка</p>
             <p>• Котята: <span id="kitten-count">0</span></p>
             <p>• Качество камеры: <span id="camera-quality">HD</span></p>
+            <p>• <strong>Видите розовый кружок в центре?</strong></p>
         </div>
         
         <div id="controls" style="display: none;">

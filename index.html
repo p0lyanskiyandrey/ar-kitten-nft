@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>AR Котенок с Motion Tracking</title>
+    <title>AR Котенок - Фиксированная позиция</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
@@ -46,7 +46,6 @@
             backdrop-filter: blur(10px);
             pointer-events: auto;
             font-size: 14px;
-            border: 1px solid rgba(155, 89, 182, 0.3);
         }
         
         #controls {
@@ -73,19 +72,28 @@
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(155, 89, 182, 0.3);
-        }
-        
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(155, 89, 182, 0.4);
         }
         
         .btn:active {
             transform: scale(0.95);
         }
         
-        #motion-status {
+        #movement-area {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: auto;
+            cursor: grab;
+        }
+        
+        #movement-area:active {
+            cursor: grabbing;
+        }
+        
+        #position-info {
             position: absolute;
             top: 50%;
             right: 15px;
@@ -94,9 +102,8 @@
             color: white;
             padding: 12px;
             border-radius: 8px;
-            font-size: 11px;
-            pointer-events: auto;
-            border: 1px solid rgba(255,255,255,0.2);
+            font-size: 12px;
+            pointer-events: none;
         }
         
         #loading {
@@ -111,53 +118,42 @@
             text-align: center;
             z-index: 5;
             pointer-events: auto;
-            border: 2px solid #9B59B6;
         }
         
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.05); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-        
-        .motion-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 5px;
-            animation: blink 1s infinite;
-        }
-        
-        .motion-active {
-            background: #00FF88;
-        }
-        
-        .motion-inactive {
-            background: #FF6B6B;
-        }
-        
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0.3; }
-        }
-        
-        #calibration {
+        .distance-ring {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(155, 89, 182, 0.9);
-            color: white;
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-            z-index: 6;
-            display: none;
+            border: 2px solid rgba(155, 89, 182, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 4;
+        }
+        
+        #ring-close {
+            width: 100px;
+            height: 100px;
+        }
+        
+        #ring-medium {
+            width: 200px;
+            height: 200px;
+        }
+        
+        #ring-far {
+            width: 300px;
+            height: 300px;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
         }
         
         @media (max-width: 600px) {
@@ -177,40 +173,45 @@
 <body>
     <video id="video" autoplay playsinline muted></video>
     
+    <!-- Кольца для визуализации расстояния -->
+    <div id="ring-close" class="distance-ring"></div>
+    <div id="ring-medium" class="distance-ring"></div>
+    <div id="ring-far" class="distance-ring"></div>
+    
+    <!-- Область для движения камеры -->
+    <div id="movement-area"></div>
+    
     <div id="ui">
         <div id="loading">
-            <div class="pulse">📱</div>
-            <p>Инициализация AR Motion Tracking...</p>
-            <p style="font-size: 12px;">Разрешите доступ к камере и датчикам</p>
-        </div>
-        
-        <div id="calibration">
-            <h3>📐 Калибровка</h3>
-            <p>Держите телефон ровно и нажмите "Готово"</p>
-            <button class="btn" onclick="finishCalibration()">✅ Готово</button>
+            <div class="pulse">🎯</div>
+            <p>Инициализация 3D AR...</p>
+            <p style="font-size: 12px;">Камера без зума, объекты в пространстве</p>
         </div>
         
         <div id="info" style="display: none;">
-            <h3>🎯 AR Motion Tracking</h3>
-            <p><strong>Двигайте телефоном</strong> - котенок остается на месте!</p>
+            <h3>🌟 AR Котенок в Пространстве</h3>
+            <p><strong>Свайпайте</strong> чтобы двигать камеру</p>
+            <p><strong>Пинч</strong> чтобы приблизить/отдалить</p>
             <p>• Котята: <span id="kitten-count">0</span></p>
-            <p>• <strong>Нажмите экран</strong> для размещения котенка</p>
-            <p>• Motion: <span id="motion-indicator">🔴 Отключен</span></p>
+            <p>• Котенок <strong>ОСТАЕТСЯ НА МЕСТЕ</strong> в мире!</p>
         </div>
         
-        <div id="motion-status" style="display: none;">
-            <div><span class="motion-indicator motion-active"></span>Движение X: <span id="motion-x">0°</span></div>
-            <div><span class="motion-indicator motion-active"></span>Движение Y: <span id="motion-y">0°</span></div>
-            <div><span class="motion-indicator motion-active"></span>Расстояние: <span id="distance">2.0м</span></div>
-            <div><span class="motion-indicator motion-active"></span>Котята: <span id="motion-kittens">0</span></div>
+        <div id="position-info">
+            <div>👁️ Камера X: <span id="cam-x">0</span></div>
+            <div>👁️ Камера Y: <span id="cam-y">0</span></div>
+            <div>👁️ Камера Z: <span id="cam-z">3</span></div>
+            <div>📏 Расстояние: <span id="distance">3.0м</span></div>
+            <div>🎯 Угол: <span id="angle">0°</span></div>
         </div>
         
         <div id="controls" style="display: none;">
-            <button class="btn" onclick="addKitten()">🐱 Разместить котенка</button>
-            <button class="btn" onclick="enableMotion()">📱 Включить трекинг</button>
-            <button class="btn" onclick="resetPosition()">🔄 Калибровка</button>
+            <button class="btn" onclick="addKitten()">🐱 Добавить котенка</button>
+            <button class="btn" onclick="moveCamera('forward')">⬆️ Вперед</button>
+            <button class="btn" onclick="moveCamera('back')">⬇️ Назад</button>
+            <button class="btn" onclick="moveCamera('left')">⬅️ Влево</button>
+            <button class="btn" onclick="moveCamera('right')">➡️ Вправо</button>
+            <button class="btn" onclick="resetCamera()">🏠 Центр</button>
             <button class="btn" onclick="clearAll()">🗑️ Очистить</button>
-            <button class="btn" onclick="takePhoto()">📸 Фото</button>
         </div>
     </div>
 
@@ -218,40 +219,41 @@
         // Глобальные переменные
         let video, scene, camera, renderer;
         let kittens = [];
-        let motionEnabled = false;
-        let calibrated = false;
         
-        // Данные движения
-        let deviceOrientation = {
-            alpha: 0, // Z-axis (компас)
-            beta: 0,  // X-axis (тилт вперед/назад)
-            gamma: 0  // Y-axis (тилт влево/вправо)
-        };
-        
-        let calibrationOffset = {
-            alpha: 0,
-            beta: 0,
-            gamma: 0
-        };
-        
+        // Позиция камеры
         let cameraPosition = {
             x: 0,
             y: 0,
             z: 3
         };
         
+        let cameraTarget = {
+            x: 0,
+            y: 0,
+            z: 0
+        };
+        
+        // Управление касаниями
+        let touches = {
+            startX: 0,
+            startY: 0,
+            lastX: 0,
+            lastY: 0,
+            isMoving: false,
+            startDistance: 0
+        };
+        
         // UI элементы
         const loadingDiv = document.getElementById('loading');
-        const calibrationDiv = document.getElementById('calibration');
         const infoDiv = document.getElementById('info');
         const controlsDiv = document.getElementById('controls');
-        const motionStatus = document.getElementById('motion-status');
+        const movementArea = document.getElementById('movement-area');
         const kittenCountSpan = document.getElementById('kitten-count');
-        const motionIndicator = document.getElementById('motion-indicator');
-        const motionX = document.getElementById('motion-x');
-        const motionY = document.getElementById('motion-y');
+        const camXSpan = document.getElementById('cam-x');
+        const camYSpan = document.getElementById('cam-y');
+        const camZSpan = document.getElementById('cam-z');
         const distanceSpan = document.getElementById('distance');
-        const motionKittens = document.getElementById('motion-kittens');
+        const angleSpan = document.getElementById('angle');
         
         // Инициализация
         async function init() {
@@ -263,27 +265,29 @@
                 // Инициализация 3D
                 init3D();
                 
-                // Запрос разрешений на датчики движения
-                await requestMotionPermissions();
-                
-                // События
-                setupEvents();
+                // События управления
+                setupTouchControls();
                 
                 // Запуск рендеринга
                 animate();
                 
-                // Скрытие загрузки и показ калибровки
+                // Скрытие загрузки
                 loadingDiv.style.display = 'none';
-                calibrationDiv.style.display = 'block';
+                infoDiv.style.display = 'block';
+                controlsDiv.style.display = 'block';
                 
-                console.log('AR Motion Tracking инициализирован!');
+                // Добавляем первого котенка в ЦЕНТР МИРА (0,0,0)
+                setTimeout(() => {
+                    addKittenAtPosition(0, 0, 0);
+                }, 500);
+                
+                console.log('AR с фиксированными объектами инициализирован!');
                 
             } catch (error) {
                 console.error('Ошибка инициализации:', error);
                 loadingDiv.innerHTML = `
                     <div>❌</div>
-                    <p>Ошибка инициализации</p>
-                    <p style="font-size: 12px;">${error.message}</p>
+                    <p>Ошибка: ${error.message}</p>
                     <button class="btn" onclick="location.reload()">🔄 Перезагрузить</button>
                 `;
             }
@@ -310,21 +314,7 @@
                 });
                 
             } catch (error) {
-                throw new Error('Камера недоступна: ' + error.message);
-            }
-        }
-        
-        async function requestMotionPermissions() {
-            // Запрос разрешений для iOS 13+
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                try {
-                    const permission = await DeviceOrientationEvent.requestPermission();
-                    if (permission !== 'granted') {
-                        throw new Error('Разрешение на датчики движения отклонено');
-                    }
-                } catch (error) {
-                    console.warn('Ошибка запроса разрешений:', error);
-                }
+                throw new Error('Камера недоступна');
             }
         }
         
@@ -332,20 +322,22 @@
             // Сцена
             scene = new THREE.Scene();
             
-            // Камера
+            // Камера с правильной настройкой
             camera = new THREE.PerspectiveCamera(
-                75,
+                60,  // Угол обзора
                 window.innerWidth / window.innerHeight,
-                0.1,
-                100
+                0.1,  // Ближняя плоскость
+                50    // Дальняя плоскость
             );
             
-            camera.position.set(cameraPosition.x, cameraPosition.y, cameraPosition.z);
+            // Устанавливаем камеру в начальную позицию
+            updateCameraPosition();
             
             // Рендерер
             renderer = new THREE.WebGLRenderer({ 
                 alpha: true,
-                antialias: true
+                antialias: true,
+                precision: 'highp'
             });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.domElement.style.position = 'absolute';
@@ -357,148 +349,164 @@
             
             // Освещение
             setupLighting();
+            
+            // Добавляем систему координат для отладки
+            addCoordinateSystem();
         }
         
         function setupLighting() {
             // Окружающий свет
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
             
             // Направленный свет
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(5, 5, 5);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            directionalLight.position.set(3, 3, 3);
             scene.add(directionalLight);
             
-            // Точечный свет
-            const pointLight = new THREE.PointLight(0x9B59B6, 0.6, 10);
+            // Дополнительный свет
+            const pointLight = new THREE.PointLight(0x9B59B6, 0.4, 10);
+            pointLight.position.set(-2, 2, 2);
             scene.add(pointLight);
         }
         
-        function setupEvents() {
-            // Датчик ориентации устройства
-            window.addEventListener('deviceorientation', function(event) {
-                if (motionEnabled && calibrated) {
-                    deviceOrientation.alpha = (event.alpha || 0) - calibrationOffset.alpha;
-                    deviceOrientation.beta = (event.beta || 0) - calibrationOffset.beta;
-                    deviceOrientation.gamma = (event.gamma || 0) - calibrationOffset.gamma;
+        function addCoordinateSystem() {
+            // Добавляем невидимые оси для отладки
+            const axesHelper = new THREE.AxesHelper(1);
+            axesHelper.visible = false; // Скрываем, но оставляем для системы координат
+            scene.add(axesHelper);
+            
+            // Добавляем точку в центре мира
+            const centerGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+            const centerMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xff0000,
+                transparent: true,
+                opacity: 0.8
+            });
+            const centerPoint = new THREE.Mesh(centerGeometry, centerMaterial);
+            centerPoint.position.set(0, 0, 0); // ТОЧНО в центре мира
+            scene.add(centerPoint);
+        }
+        
+        function setupTouchControls() {
+            // Тач-события для движения камеры
+            movementArea.addEventListener('touchstart', function(event) {
+                if (event.touches.length === 1) {
+                    // Одним пальцем - поворот камеры
+                    touches.startX = event.touches[0].clientX;
+                    touches.startY = event.touches[0].clientY;
+                    touches.lastX = touches.startX;
+                    touches.lastY = touches.startY;
+                    touches.isMoving = true;
+                } else if (event.touches.length === 2) {
+                    // Двумя пальцами - зум
+                    const dx = event.touches[0].clientX - event.touches[1].clientX;
+                    const dy = event.touches[0].clientY - event.touches[1].clientY;
+                    touches.startDistance = Math.sqrt(dx * dx + dy * dy);
+                }
+                event.preventDefault();
+            }, { passive: false });
+            
+            movementArea.addEventListener('touchmove', function(event) {
+                if (event.touches.length === 1 && touches.isMoving) {
+                    // Поворот вокруг центра
+                    const deltaX = event.touches[0].clientX - touches.lastX;
+                    const deltaY = event.touches[0].clientY - touches.lastY;
                     
-                    updateCameraFromMotion();
-                    updateMotionDisplay();
-                }
-            });
-            
-            // Клик для размещения котенка
-            document.addEventListener('click', function(event) {
-                if (event.target.classList.contains('btn') || 
-                    event.target.closest('#controls') || 
-                    event.target.closest('#info') ||
-                    event.target.closest('#calibration')) {
-                    return;
-                }
-                
-                addKitten();
-            });
-            
-            // Тач события
-            document.addEventListener('touchstart', function(event) {
-                if (event.target.classList.contains('btn') || 
-                    event.target.closest('#controls') || 
-                    event.target.closest('#info') ||
-                    event.target.closest('#calibration')) {
-                    return;
+                    // Поворачиваем камеру вокруг центра мира (0,0,0)
+                    const sensitivity = 0.01;
+                    
+                    // Горизонтальный поворот (вокруг Y-оси)
+                    const angleY = deltaX * sensitivity;
+                    const cosY = Math.cos(angleY);
+                    const sinY = Math.sin(angleY);
+                    
+                    const newX = cameraPosition.x * cosY - cameraPosition.z * sinY;
+                    const newZ = cameraPosition.x * sinY + cameraPosition.z * cosY;
+                    
+                    cameraPosition.x = newX;
+                    cameraPosition.z = newZ;
+                    
+                    // Вертикальный поворот
+                    cameraPosition.y += deltaY * sensitivity;
+                    cameraPosition.y = Math.max(-3, Math.min(3, cameraPosition.y)); // Ограничиваем
+                    
+                    updateCameraPosition();
+                    updatePositionInfo();
+                    
+                    touches.lastX = event.touches[0].clientX;
+                    touches.lastY = event.touches[0].clientY;
+                    
+                } else if (event.touches.length === 2) {
+                    // Зум
+                    const dx = event.touches[0].clientX - event.touches[1].clientX;
+                    const dy = event.touches[0].clientY - event.touches[1].clientY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (touches.startDistance > 0) {
+                        const zoomFactor = distance / touches.startDistance;
+                        const currentDistance = Math.sqrt(
+                            cameraPosition.x * cameraPosition.x + 
+                            cameraPosition.y * cameraPosition.y + 
+                            cameraPosition.z * cameraPosition.z
+                        );
+                        
+                        let newDistance = currentDistance / zoomFactor;
+                        newDistance = Math.max(0.5, Math.min(10, newDistance)); // Ограничиваем зум
+                        
+                        const scale = newDistance / currentDistance;
+                        cameraPosition.x *= scale;
+                        cameraPosition.y *= scale;
+                        cameraPosition.z *= scale;
+                        
+                        updateCameraPosition();
+                        updatePositionInfo();
+                    }
+                    
+                    touches.startDistance = distance;
                 }
                 
                 event.preventDefault();
-                addKitten();
             }, { passive: false });
+            
+            movementArea.addEventListener('touchend', function(event) {
+                touches.isMoving = false;
+                touches.startDistance = 0;
+            });
         }
         
-        function finishCalibration() {
-            // Сохраняем текущую ориентацию как базовую
-            calibrationOffset.alpha = deviceOrientation.alpha || 0;
-            calibrationOffset.beta = deviceOrientation.beta || 0;
-            calibrationOffset.gamma = deviceOrientation.gamma || 0;
-            
-            calibrated = true;
-            
-            calibrationDiv.style.display = 'none';
-            infoDiv.style.display = 'block';
-            controlsDiv.style.display = 'block';
-            
-            // Добавляем первого котенка
-            setTimeout(() => {
-                addKitten();
-            }, 500);
-        }
-        
-        function enableMotion() {
-            motionEnabled = !motionEnabled;
-            
-            if (motionEnabled) {
-                motionIndicator.innerHTML = '🟢 Включен';
-                motionStatus.style.display = 'block';
-                event.target.textContent = '⏸️ Отключить трекинг';
-            } else {
-                motionIndicator.innerHTML = '🔴 Отключен';
-                motionStatus.style.display = 'none';
-                event.target.textContent = '📱 Включить трекинг';
-            }
-        }
-        
-        function updateCameraFromMotion() {
-            if (!motionEnabled || !calibrated) return;
-            
-            // Конвертируем углы устройства в радианы
-            const alphaRad = deviceOrientation.alpha * Math.PI / 180;
-            const betaRad = deviceOrientation.beta * Math.PI / 180;
-            const gammaRad = deviceOrientation.gamma * Math.PI / 180;
-            
-            // Применяем поворот камеры
-            camera.rotation.set(
-                betaRad,  // X-axis (вверх/вниз)
-                alphaRad, // Y-axis (поворот)
-                gammaRad  // Z-axis (наклон)
-            );
-            
-            // Обновляем позицию камеры на основе движения
-            const moveSpeed = 0.02;
-            cameraPosition.x += Math.sin(alphaRad) * moveSpeed;
-            cameraPosition.z += Math.cos(alphaRad) * moveSpeed;
-            
+        function updateCameraPosition() {
+            // Устанавливаем позицию камеры
             camera.position.set(cameraPosition.x, cameraPosition.y, cameraPosition.z);
-        }
-        
-        function updateMotionDisplay() {
-            motionX.textContent = Math.round(deviceOrientation.alpha) + '°';
-            motionY.textContent = Math.round(deviceOrientation.beta) + '°';
             
-            if (kittens.length > 0) {
-                const distance = camera.position.distanceTo(kittens[0].position);
-                distanceSpan.textContent = distance.toFixed(1) + 'м';
-            }
-            
-            motionKittens.textContent = kittens.length;
+            // Камера ВСЕГДА смотрит на центр мира (0,0,0)
+            camera.lookAt(cameraTarget.x, cameraTarget.y, cameraTarget.z);
         }
         
         function addKitten() {
-            // Создаем котенка в фиксированной позиции мира
+            // Добавляем котенка в случайную позицию вокруг центра
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 1 + Math.random() * 2;
+            const height = (Math.random() - 0.5) * 2;
+            
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            
+            addKittenAtPosition(x, height, z);
+        }
+        
+        function addKittenAtPosition(x, y, z) {
+            // Создаем котенка в ТОЧНОЙ позиции мира
             const kittenGroup = new THREE.Group();
+            kittenGroup.position.set(x, y, z); // ФИКСИРОВАННАЯ позиция в мире
             
-            // Размещаем в разных позициях
-            const angle = kittens.length * (Math.PI * 2 / 5); // 5 позиций по кругу
-            const radius = 2;
-            
-            kittenGroup.position.set(
-                Math.sin(angle) * radius,
-                (Math.random() - 0.5) * 2,
-                Math.cos(angle) * radius
-            );
+            console.log(`Котенок создан в позиции: ${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)}`);
             
             // Загрузка текстуры
             const loader = new THREE.TextureLoader();
             loader.load('kitten.jpg', 
                 function(texture) {
-                    console.log('✅ Motion-tracked котенок создан!');
+                    console.log('✅ Котенок размещен в фиксированной позиции мира!');
                     createKittenMesh(kittenGroup, texture);
                 },
                 undefined,
@@ -515,7 +523,7 @@
         
         function createKittenMesh(group, texture) {
             // Основная плоскость котенка
-            const geometry = new THREE.PlaneGeometry(1, 1);
+            const geometry = new THREE.PlaneGeometry(0.8, 0.8);
             
             let material;
             if (texture) {
@@ -536,7 +544,7 @@
             group.add(kittenMesh);
             
             // Рамка
-            const frameGeometry = new THREE.RingGeometry(0.52, 0.55, 32);
+            const frameGeometry = new THREE.RingGeometry(0.42, 0.45, 32);
             const frameMaterial = new THREE.MeshBasicMaterial({ 
                 color: 0xFFD700,
                 transparent: true,
@@ -546,21 +554,54 @@
             frame.position.z = -0.01;
             group.add(frame);
             
-            // Легкое вращение для красоты
-            group.userData.rotationSpeed = 0.005;
+            // Котенок всегда поворачивается к камере
+            group.userData.lookAtCamera = true;
         }
         
-        function resetPosition() {
+        // Управляющие функции
+        function moveCamera(direction) {
+            const speed = 0.5;
+            
+            switch(direction) {
+                case 'forward':
+                    const forwardDir = new THREE.Vector3(0, 0, -speed);
+                    forwardDir.applyQuaternion(camera.quaternion);
+                    cameraPosition.x += forwardDir.x;
+                    cameraPosition.y += forwardDir.y;
+                    cameraPosition.z += forwardDir.z;
+                    break;
+                case 'back':
+                    const backDir = new THREE.Vector3(0, 0, speed);
+                    backDir.applyQuaternion(camera.quaternion);
+                    cameraPosition.x += backDir.x;
+                    cameraPosition.y += backDir.y;
+                    cameraPosition.z += backDir.z;
+                    break;
+                case 'left':
+                    const leftDir = new THREE.Vector3(-speed, 0, 0);
+                    leftDir.applyQuaternion(camera.quaternion);
+                    cameraPosition.x += leftDir.x;
+                    cameraPosition.z += leftDir.z;
+                    break;
+                case 'right':
+                    const rightDir = new THREE.Vector3(speed, 0, 0);
+                    rightDir.applyQuaternion(camera.quaternion);
+                    cameraPosition.x += rightDir.x;
+                    cameraPosition.z += rightDir.z;
+                    break;
+            }
+            
+            updateCameraPosition();
+            updatePositionInfo();
+        }
+        
+        function resetCamera() {
             cameraPosition.x = 0;
             cameraPosition.y = 0;
             cameraPosition.z = 3;
             
-            camera.position.set(cameraPosition.x, cameraPosition.y, cameraPosition.z);
-            camera.rotation.set(0, 0, 0);
-            
-            // Повторная калибровка
-            calibrationDiv.style.display = 'block';
-            calibrated = false;
+            updateCameraPosition();
+            updatePositionInfo();
         }
         
         function clearAll() {
@@ -571,53 +612,20 @@
             updateKittenCount();
         }
         
-        function takePhoto() {
-            // Создаем composite изображение
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth || 1280;
-            canvas.height = video.videoHeight || 720;
-            const ctx = canvas.getContext('2d');
+        function updatePositionInfo() {
+            camXSpan.textContent = cameraPosition.x.toFixed(1);
+            camYSpan.textContent = cameraPosition.y.toFixed(1);
+            camZSpan.textContent = cameraPosition.z.toFixed(1);
             
-            // Рисуем видео
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const distance = Math.sqrt(
+                cameraPosition.x * cameraPosition.x + 
+                cameraPosition.y * cameraPosition.y + 
+                cameraPosition.z * cameraPosition.z
+            );
+            distanceSpan.textContent = distance.toFixed(1) + 'м';
             
-            // Рисуем 3D поверх (упрощенно)
-            ctx.fillStyle = 'rgba(155, 89, 182, 0.8)';
-            ctx.font = '48px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('🐱 AR Photo!', canvas.width / 2, canvas.height / 2);
-            
-            // Скачиваем
-            const link = document.createElement('a');
-            link.download = 'motion-ar-kitten.png';
-            link.href = canvas.toDataURL();
-            link.click();
-            
-            showNotification('📸 AR-фото сохранено!');
-        }
-        
-        function showNotification(message) {
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: rgba(0,0,0,0.8);
-                color: white;
-                padding: 15px 25px;
-                border-radius: 10px;
-                z-index: 10000;
-                font-size: 16px;
-            `;
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                if (document.body.contains(notification)) {
-                    document.body.removeChild(notification);
-                }
-            }, 2000);
+            const angle = Math.atan2(cameraPosition.x, cameraPosition.z) * 180 / Math.PI;
+            angleSpan.textContent = Math.round(angle) + '°';
         }
         
         function updateKittenCount() {
@@ -627,12 +635,15 @@
         function animate() {
             requestAnimationFrame(animate);
             
-            // Анимация котят
+            // Котята всегда поворачиваются к камере
             kittens.forEach(kitten => {
-                if (kitten.userData.rotationSpeed) {
-                    kitten.rotation.y += kitten.userData.rotationSpeed;
+                if (kitten.userData.lookAtCamera) {
+                    kitten.lookAt(camera.position);
                 }
             });
+            
+            // Обновление позиционной информации
+            updatePositionInfo();
             
             // Рендер
             renderer.render(scene, camera);
@@ -648,7 +659,7 @@
         // Запуск
         window.addEventListener('load', init);
         
-        console.log('🌟 AR с Motion Tracking загружен!');
+        console.log('🌟 AR с фиксированными объектами в пространстве загружен!');
     </script>
 </body>
 </html>

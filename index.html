@@ -76,9 +76,9 @@
                 init3D();
                 
                 // Создаем котенка в комнате
-                createKittenInRoom();
+                await createKittenInRoom();
                 
-                // События управления
+                // События управления (только после создания котенка)
                 setupControls();
                 
                 // Запуск рендеринга
@@ -236,6 +236,10 @@
                 -1.5   // Перед пользователем
             );
             
+            // Сразу добавляем в сцену и сохраняем ссылку
+            scene.add(kittenGroup);
+            kitten = kittenGroup;
+            
             // Загрузка вашего котенка
             const loader = new THREE.TextureLoader();
             loader.load('kitten.jpg', 
@@ -250,8 +254,7 @@
                 }
             );
             
-            scene.add(kittenGroup);
-            kitten = kittenGroup;
+            return Promise.resolve(); // Возвращаем промис для async/await
         }
         
         function createKittenMesh(group, texture) {
@@ -344,43 +347,45 @@
                     if (touches.startDistance > 0) {
                         const zoomFactor = distance / touches.startDistance;
                         
-                        // Двигаемся к/от котенка
-                        const direction = new THREE.Vector3(
-                            kitten.position.x - cameraPosition.x,
-                            0, // Не меняем высоту
-                            kitten.position.z - cameraPosition.z
-                        ).normalize();
-                        
-                        const moveAmount = (zoomFactor - 1) * 0.5;
-                        cameraPosition.x += direction.x * moveAmount;
-                        cameraPosition.z += direction.z * moveAmount;
-                        
-                        // Ограничиваем расстояние (не можем пройти сквозь котенка)
-                        const distanceToKitten = Math.sqrt(
-                            Math.pow(cameraPosition.x - kitten.position.x, 2) +
-                            Math.pow(cameraPosition.z - kitten.position.z, 2)
-                        );
-                        
-                        if (distanceToKitten < 0.3) {
-                            // Слишком близко - отодвигаем
-                            const pushDirection = new THREE.Vector3(
-                                cameraPosition.x - kitten.position.x,
-                                0,
-                                cameraPosition.z - kitten.position.z
-                            ).normalize();
-                            
-                            cameraPosition.x = kitten.position.x + pushDirection.x * 0.3;
-                            cameraPosition.z = kitten.position.z + pushDirection.z * 0.3;
-                        } else if (distanceToKitten > 5) {
-                            // Слишком далеко - приближаем
-                            const pullDirection = new THREE.Vector3(
+                        // Двигаемся к/от котенка (только если котенок создан)
+                        if (kitten && kitten.position) {
+                            const direction = new THREE.Vector3(
                                 kitten.position.x - cameraPosition.x,
-                                0,
+                                0, // Не меняем высоту
                                 kitten.position.z - cameraPosition.z
                             ).normalize();
                             
-                            cameraPosition.x = kitten.position.x - pullDirection.x * 5;
-                            cameraPosition.z = kitten.position.z - pullDirection.z * 5;
+                            const moveAmount = (zoomFactor - 1) * 0.5;
+                            cameraPosition.x += direction.x * moveAmount;
+                            cameraPosition.z += direction.z * moveAmount;
+                            
+                            // Ограничиваем расстояние (не можем пройти сквозь котенка)
+                            const distanceToKitten = Math.sqrt(
+                                Math.pow(cameraPosition.x - kitten.position.x, 2) +
+                                Math.pow(cameraPosition.z - kitten.position.z, 2)
+                            );
+                            
+                            if (distanceToKitten < 0.3) {
+                                // Слишком близко - отодвигаем
+                                const pushDirection = new THREE.Vector3(
+                                    cameraPosition.x - kitten.position.x,
+                                    0,
+                                    cameraPosition.z - kitten.position.z
+                                ).normalize();
+                                
+                                cameraPosition.x = kitten.position.x + pushDirection.x * 0.3;
+                                cameraPosition.z = kitten.position.z + pushDirection.z * 0.3;
+                            } else if (distanceToKitten > 5) {
+                                // Слишком далеко - приближаем
+                                const pullDirection = new THREE.Vector3(
+                                    kitten.position.x - cameraPosition.x,
+                                    0,
+                                    kitten.position.z - cameraPosition.z
+                                ).normalize();
+                                
+                                cameraPosition.x = kitten.position.x - pullDirection.x * 5;
+                                cameraPosition.z = kitten.position.z - pullDirection.z * 5;
+                            }
                         }
                         
                         updateCameraPosition();
@@ -402,8 +407,13 @@
             // Устанавливаем позицию камеры (глаз пользователя)
             camera.position.set(cameraPosition.x, cameraPosition.y, cameraPosition.z);
             
-            // Камера смотрит в направлении котенка
-            camera.lookAt(kitten.position);
+            // Камера смотрит в направлении котенка (только если котенок создан)
+            if (kitten && kitten.position) {
+                camera.lookAt(kitten.position);
+            } else {
+                // Если котенок еще не создан, смотрим вперед
+                camera.lookAt(0, 1, -1.5);
+            }
         }
         
         function animate() {

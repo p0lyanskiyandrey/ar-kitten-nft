@@ -2,17 +2,17 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>AR Котенок NFT - Fixed Camera</title>
-    <meta name="description" content="AR котенок с космическими глазами - NFT">
+    <title>WebXR AR Котенок NFT</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body {
             margin: 0;
+            padding: 0;
             font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             overflow: hidden;
+            touch-action: none;
         }
         
         #ui {
@@ -32,325 +32,459 @@
             right: 20px;
             background: rgba(0,0,0,0.8);
             color: white;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 14px;
-            pointer-events: auto;
+            padding: 20px;
+            border-radius: 15px;
             backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            pointer-events: auto;
         }
         
-        #marker-hint {
+        #controls {
             position: absolute;
             bottom: 20px;
             left: 20px;
             right: 20px;
-            background: rgba(255,255,255,0.9);
-            padding: 10px;
-            border-radius: 10px;
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 15px;
             text-align: center;
+            backdrop-filter: blur(10px);
             pointer-events: auto;
-            font-size: 12px;
         }
         
-        #loading {
+        .btn {
+            padding: 15px 25px;
+            margin: 8px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #9B59B6 0%, #8E44AD 100%);
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(155, 89, 182, 0.4);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        #status {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
             color: white;
+            padding: 30px;
+            border-radius: 15px;
             text-align: center;
-            background: rgba(0,0,0,0.8);
-            padding: 20px;
-            border-radius: 10px;
-            pointer-events: auto;
-        }
-        
-        .status {
-            color: #4CAF50;
-            font-weight: bold;
-        }
-        
-        #zoom-controls {
-            position: absolute;
-            top: 50%;
-            right: 20px;
-            transform: translateY(-50%);
-            background: rgba(0,0,0,0.7);
-            padding: 10px;
-            border-radius: 10px;
-            pointer-events: auto;
-        }
-        
-        .zoom-btn {
-            display: block;
-            width: 40px;
-            height: 40px;
-            margin: 5px 0;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 50%;
             font-size: 18px;
-            cursor: pointer;
+            pointer-events: auto;
+            max-width: 300px;
+        }
+        
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .glow {
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        @media (max-width: 600px) {
+            .btn {
+                padding: 12px 18px;
+                font-size: 14px;
+                margin: 5px;
+            }
+            
+            #info, #controls {
+                margin: 10px;
+                padding: 15px;
+            }
         }
     </style>
 </head>
 <body>
+    <div id="canvas-container"></div>
+    
     <div id="ui">
-        <div id="loading">
-            <h2>🐱 Загрузка AR-котенка...</h2>
-            <p>Разрешите доступ к камере</p>
-            <div class="status">Статус: Инициализация...</div>
+        <div id="info">
+            <h2 class="glow">🌟 WebXR AR Котенок 🌟</h2>
+            <p><strong>Современная дополненная реальность</strong></p>
+            <p id="support-info">Проверяем поддержку WebXR...</p>
         </div>
         
-        <div id="info" style="display: none;">
-            <h3>🎯 AR-котенок готов!</h3>
-            <p><strong>Наведите камеру на Hiro-маркер</strong></p>
-            <p>• Держите расстояние 20-30 см</p>
-            <p>• Хорошее освещение важно</p>
-            <p>• Нажмите на котенка для эффектов</p>
+        <div id="status">
+            <div class="pulse">🔄</div>
+            <p id="status-text">Инициализация WebXR...</p>
         </div>
         
-        <div id="zoom-controls" style="display: none;">
-            <button class="zoom-btn" onclick="adjustZoom(0.8)">-</button>
-            <button class="zoom-btn" onclick="adjustZoom(1.2)">+</button>
-        </div>
-        
-        <div id="marker-hint" style="display: none;">
-            <div style="font-weight: bold; margin-bottom: 5px;">
-                🎯 Нужен Hiro-маркер
-            </div>
-            <div style="font-size: 10px;">
-                Найдите "AR.js hiro marker" в Google или используйте QR-код
-            </div>
+        <div id="controls" style="display: none;">
+            <button class="btn" id="ar-button" onclick="startAR()">🚀 Запустить AR</button>
+            <button class="btn" onclick="addKitten()">🐱 Добавить котенка</button>
+            <button class="btn" onclick="resetKittens()">🗑️ Очистить</button>
+            <button class="btn" onclick="toggleEffects()">✨ Эффекты</button>
         </div>
     </div>
 
-    <a-scene 
-        id="arScene"
-        embedded 
-        arjs="sourceType: webcam; 
-              debugUIEnabled: false; 
-              detectionMode: mono_and_matrix; 
-              matrixCodeType: 3x3; 
-              trackingMethod: best;
-              sourceWidth: 640;
-              sourceHeight: 480;
-              displayWidth: 640;
-              displayHeight: 480;"
-        vr-mode-ui="enabled: false"
-        renderer="logarithmicDepthBuffer: true; colorManagement: true; sortObjects: true;"
-        loading-screen="enabled: false"
-        device-orientation-permission-ui="enabled: false">
-        
-        <a-assets>
-            <img id="kittenTexture" 
-                 crossorigin="anonymous"
-                 src="kitten.jpg" 
-                 alt="Котенок с космическими глазами">
-        </a-assets>
-
-        <a-camera 
-            gps-camera 
-            rotation-reader
-            look-controls-enabled="false"
-            arjs-look-controls="smoothingFactor: 0.1"
-            fov="70"
-            zoom="1"
-            camera="active: true; fov: 70;">
-        </a-camera>
-
-        <a-marker 
-            id="marker"
-            preset="hiro" 
-            raycaster="objects: .clickable"
-            emitevents="true"
-            cursor="fuse: false; rayOrigin: mouse;"
-            smooth="true"
-            smoothCount="10"
-            smoothTolerance="0.01"
-            smoothThreshold="5">
-            
-            <a-group id="kittenGroup" position="0 0 0" scale="0.8 0.8 0.8">
-                
-                <!-- Основной котенок -->
-                <a-plane 
-                    id="kittenPlane"
-                    class="clickable"
-                    src="#kittenTexture"
-                    width="3" 
-                    height="3"
-                    position="0 1.5 0"
-                    rotation="0 0 0"
-                    transparent="true"
-                    shader="standard"
-                    roughness="0.3"
-                    metalness="0.1"
-                    animation__idle="property: rotation; to: 0 360 0; loop: true; dur: 20000; easing: linear;">
-                    
-                    <!-- Магическое свечение -->
-                    <a-ring 
-                        color="#9B59B6" 
-                        radius-inner="1.8" 
-                        radius-outer="2.2"
-                        position="0 0 -0.2"
-                        opacity="0.4"
-                        animation__glow="property: opacity; to: 0.8; dir: alternate; loop: true; dur: 3000; easing: easeInOutSine;"
-                        animation__spin="property: rotation; to: 0 0 360; loop: true; dur: 12000; easing: linear;">
-                    </a-ring>
-                </a-plane>
-
-                <!-- Летающие частицы (меньше для производительности) -->
-                <a-sphere 
-                    position="2 2 1" 
-                    radius="0.08" 
-                    color="#E74C3C"
-                    opacity="0.8"
-                    animation__float1="property: position; to: -2 3 -1; loop: true; dur: 6000; dir: alternate; easing: easeInOutQuad;">
-                </a-sphere>
-                
-                <a-sphere 
-                    position="-2 1 1.5" 
-                    radius="0.06" 
-                    color="#3498DB"
-                    opacity="0.7"
-                    animation__float2="property: position; to: 2 3.5 -1.5; loop: true; dur: 7000; dir: alternate; easing: easeInOutQuad;">
-                </a-sphere>
-
-                <!-- Подсветка снизу -->
-                <a-circle 
-                    radius="2.2" 
-                    color="#8E44AD" 
-                    position="0 0.2 0" 
-                    rotation="-90 0 0"
-                    opacity="0.3"
-                    animation__pulse="property: scale; to: 1.2 1.2 1.2; dir: alternate; loop: true; dur: 4000; easing: easeInOutSine;"
-                    animation__rotate="property: rotation; to: -90 0 360; loop: true; dur: 15000; easing: linear;">
-                </a-circle>
-
-                <!-- Название NFT -->
-                <a-text 
-                    value="🌟 COSMIC KITTEN 🌟" 
-                    position="0 3.5 0"
-                    align="center"
-                    color="#FFD700"
-                    font="dejavu"
-                    scale="1.2 1.2 1.2"
-                    animation__float="property: position; to: 0 4 0; dir: alternate; loop: true; dur: 3000; easing: easeInOutSine;">
-                </a-text>
-
-            </a-group>
-        </a-marker>
-
-        <!-- Оптимальное освещение -->
-        <a-light type="ambient" color="#404040" intensity="0.4"></a-light>
-        <a-light type="directional" position="2 4 2" color="#ffffff" intensity="0.6"></a-light>
-        
-    </a-scene>
-
     <script>
-        // Управление UI
-        const loading = document.getElementById('loading');
-        const info = document.getElementById('info');
-        const markerHint = document.getElementById('marker-hint');
-        const zoomControls = document.getElementById('zoom-controls');
-        const statusDiv = loading.querySelector('.status');
+        // Глобальные переменные
+        let scene, camera, renderer, xrSession;
+        let kittens = [];
+        let isEffectsEnabled = true;
+        let hitTestSource = null;
+        let hitTestSourceRequested = false;
+        let reticle;
         
-        let currentZoom = 1;
+        // Элементы UI
+        const statusDiv = document.getElementById('status');
+        const statusText = document.getElementById('status-text');
+        const supportInfo = document.getElementById('support-info');
+        const controlsDiv = document.getElementById('controls');
+        const arButton = document.getElementById('ar-button');
         
         function updateStatus(message) {
-            statusDiv.textContent = `Статус: ${message}`;
-            console.log(message);
+            statusText.textContent = message;
+            console.log('Status:', message);
         }
-
-        // Функция управления зумом
-        function adjustZoom(factor) {
-            currentZoom *= factor;
-            currentZoom = Math.max(0.5, Math.min(2, currentZoom)); // Ограничиваем зум
-            
-            const camera = document.querySelector('a-camera');
-            if (camera) {
-                camera.setAttribute('zoom', currentZoom);
-                console.log('Zoom adjusted to:', currentZoom);
+        
+        function updateSupportInfo(message) {
+            supportInfo.textContent = message;
+        }
+        
+        // Инициализация
+        async function init() {
+            try {
+                updateStatus('Проверяем поддержку WebXR...');
+                
+                // Проверка поддержки WebXR
+                if ('xr' in navigator) {
+                    const supported = await navigator.xr.isSessionSupported('immersive-ar');
+                    if (supported) {
+                        updateSupportInfo('✅ WebXR AR поддерживается!');
+                        updateStatus('WebXR готов к запуску');
+                        initThree();
+                    } else {
+                        updateSupportInfo('❌ WebXR AR не поддерживается этим браузером');
+                        updateStatus('Попробуйте Chrome на Android или Safari на iOS');
+                        fallbackTo3D();
+                    }
+                } else {
+                    updateSupportInfo('❌ WebXR не найден');
+                    updateStatus('Используем обычный 3D режим');
+                    fallbackTo3D();
+                }
+            } catch (error) {
+                console.error('Ошибка инициализации:', error);
+                updateSupportInfo('❌ Ошибка: ' + error.message);
+                updateStatus('Переключаемся на 3D режим');
+                fallbackTo3D();
             }
         }
-
-        // Обработка событий AR
-        const marker = document.querySelector('#marker');
-        const kittenPlane = document.querySelector('#kittenPlane');
         
-        // Когда маркер найден
-        marker.addEventListener('markerFound', function() {
-            updateStatus('🎉 Котенок найден!');
-            markerHint.style.display = 'none';
-            console.log('AR котенок активирован!');
-        });
-        
-        // Когда маркер потерян
-        marker.addEventListener('markerLost', function() {
-            updateStatus('🔍 Ищем котенка...');
-            markerHint.style.display = 'block';
-            console.log('AR котенок скрылся');
-        });
-        
-        // Клик по котенку
-        kittenPlane.addEventListener('click', function() {
-            console.log('Котенок нажат!');
+        function initThree() {
+            // Сцена
+            scene = new THREE.Scene();
             
-            // Анимация при клике
-            this.setAttribute('animation__click', {
-                property: 'scale',
-                to: '1.3 1.3 1.3',
-                dur: 500,
-                dir: 'alternate',
-                loop: false
+            // Камера
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+            
+            // Рендерер с поддержкой WebXR
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true, 
+                alpha: true 
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Освещение
+            const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+            light.position.set(0.5, 1, 0.25);
+            scene.add(light);
+            
+            // Точечный свет
+            const pointLight = new THREE.PointLight(0xffffff, 0.8);
+            pointLight.position.set(0, 2, 0);
+            scene.add(pointLight);
+            
+            // Создаем прицел для размещения объектов
+            createReticle();
+            
+            // Запуск рендеринга
+            renderer.setAnimationLoop(render);
+            
+            statusDiv.style.display = 'none';
+            controlsDiv.style.display = 'block';
+            
+            updateStatus('Готов к AR!');
+        }
+        
+        function createReticle() {
+            const geometry = new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.5
             });
             
-            // Смена цвета
-            const colors = ['#FFFFFF', '#FF6B9D', '#6BCFFF', '#FFD93D'];
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
-            this.setAttribute('material', 'color', randomColor);
+            reticle = new THREE.Mesh(geometry, material);
+            reticle.matrixAutoUpdate = false;
+            reticle.visible = false;
+            scene.add(reticle);
+        }
+        
+        async function startAR() {
+            try {
+                updateStatus('Запускаем AR сессию...');
+                arButton.disabled = true;
+                
+                // Запрос AR сессии
+                xrSession = await navigator.xr.requestSession('immersive-ar', {
+                    requiredFeatures: ['hit-test']
+                });
+                
+                // Настройка рендерера для XR
+                renderer.xr.setSession(xrSession);
+                
+                // Обработчики событий сессии
+                xrSession.addEventListener('end', onSessionEnd);
+                
+                updateStatus('AR активирован! Наведите на поверхность');
+                arButton.textContent = '🛑 Выйти из AR';
+                arButton.onclick = endAR;
+                arButton.disabled = false;
+                
+            } catch (error) {
+                console.error('Ошибка запуска AR:', error);
+                updateStatus('Ошибка запуска AR: ' + error.message);
+                arButton.disabled = false;
+                
+                // Если AR не работает, показываем 3D версию
+                fallbackTo3D();
+            }
+        }
+        
+        function endAR() {
+            if (xrSession) {
+                xrSession.end();
+            }
+        }
+        
+        function onSessionEnd() {
+            xrSession = null;
+            hitTestSource = null;
+            hitTestSourceRequested = false;
             
-            // Восстановление цвета через 2 секунды
-            setTimeout(() => {
-                this.setAttribute('material', 'color', '#FFFFFF');
-            }, 2000);
-        });
-
-        // Инициализация
-        window.addEventListener('load', function() {
-            updateStatus('Запуск камеры...');
+            arButton.textContent = '🚀 Запустить AR';
+            arButton.onclick = startAR;
+            arButton.disabled = false;
             
-            // Настройка камеры с задержкой
-            setTimeout(() => {
-                // Попробуем получить доступ к камере напрямую для настройки
-                const scene = document.querySelector('a-scene');
-                if (scene && scene.hasLoaded) {
-                    updateStatus('Камера настроена');
-                    loading.style.display = 'none';
-                    info.style.display = 'block';
-                    markerHint.style.display = 'block';
-                    zoomControls.style.display = 'block';
+            updateStatus('AR сессия завершена');
+        }
+        
+        function addKitten() {
+            if (!xrSession) {
+                updateStatus('Сначала запустите AR!');
+                return;
+            }
+            
+            if (reticle.visible) {
+                createKittenAtPosition(reticle.position, reticle.rotation);
+                updateStatus(`Котенок добавлен! Всего: ${kittens.length}`);
+            } else {
+                updateStatus('Наведите на поверхность для размещения котенка');
+            }
+        }
+        
+        function createKittenAtPosition(position, rotation) {
+            // Группа для котенка
+            const kittenGroup = new THREE.Group();
+            kittenGroup.position.copy(position);
+            kittenGroup.rotation.copy(rotation);
+            
+            // Загружаем текстуру котенка
+            const loader = new THREE.TextureLoader();
+            loader.load('kitten.jpg', 
+                function(texture) {
+                    // Основная плоскость
+                    const geometry = new THREE.PlaneGeometry(0.3, 0.3);
+                    const material = new THREE.MeshLambertMaterial({ 
+                        map: texture,
+                        transparent: true,
+                        side: THREE.DoubleSide
+                    });
+                    
+                    const kittenMesh = new THREE.Mesh(geometry, material);
+                    kittenMesh.position.y = 0.15; // Поднимаем над поверхностью
+                    kittenGroup.add(kittenMesh);
+                    
+                    // Рамка
+                    if (isEffectsEnabled) {
+                        const frameGeometry = new THREE.RingGeometry(0.16, 0.18, 32);
+                        const frameMaterial = new THREE.MeshBasicMaterial({ 
+                            color: 0xFFD700,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+                        frame.position.y = 0.15;
+                        frame.position.z = -0.01;
+                        kittenGroup.add(frame);
+                        
+                        // Свечение
+                        const glowGeometry = new THREE.RingGeometry(0.19, 0.21, 32);
+                        const glowMaterial = new THREE.MeshBasicMaterial({ 
+                            color: 0x9B59B6,
+                            transparent: true,
+                            opacity: 0.4
+                        });
+                        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                        glow.position.y = 0.15;
+                        glow.position.z = -0.02;
+                        kittenGroup.add(glow);
+                    }
+                    
+                    // Анимация вращения
+                    kittenGroup.userData.rotationSpeed = 0.01;
+                    
+                },
+                undefined,
+                function(error) {
+                    console.log('Создаем котенка без текстуры');
+                    // Fallback без текстуры
+                    const geometry = new THREE.PlaneGeometry(0.3, 0.3);
+                    const material = new THREE.MeshLambertMaterial({ 
+                        color: 0x9B59B6,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    
+                    const kittenMesh = new THREE.Mesh(geometry, material);
+                    kittenMesh.position.y = 0.15;
+                    kittenGroup.add(kittenMesh);
                 }
-            }, 3000);
+            );
+            
+            scene.add(kittenGroup);
+            kittens.push(kittenGroup);
+        }
+        
+        function resetKittens() {
+            kittens.forEach(kitten => {
+                scene.remove(kitten);
+            });
+            kittens = [];
+            updateStatus('Все котята удалены');
+        }
+        
+        function toggleEffects() {
+            isEffectsEnabled = !isEffectsEnabled;
+            updateStatus(isEffectsEnabled ? 'Эффекты включены' : 'Эффекты выключены');
+        }
+        
+        function render(timestamp, frame) {
+            if (frame && xrSession) {
+                // Hit testing для размещения объектов
+                if (!hitTestSourceRequested) {
+                    xrSession.requestReferenceSpace('viewer').then(function(referenceSpace) {
+                        xrSession.requestHitTestSource({ space: referenceSpace }).then(function(source) {
+                            hitTestSource = source;
+                        });
+                    });
+                    hitTestSourceRequested = true;
+                }
+                
+                if (hitTestSource) {
+                    const hitTestResults = frame.getHitTestResults(hitTestSource);
+                    
+                    if (hitTestResults.length) {
+                        const hit = hitTestResults[0];
+                        reticle.visible = true;
+                        reticle.matrix.fromArray(hit.getPose(renderer.xr.getReferenceSpace()).transform.matrix);
+                    } else {
+                        reticle.visible = false;
+                    }
+                }
+            }
+            
+            // Анимация котят
+            kittens.forEach(kitten => {
+                if (kitten.userData.rotationSpeed) {
+                    kitten.rotation.y += kitten.userData.rotationSpeed;
+                }
+            });
+            
+            renderer.render(scene, camera);
+        }
+        
+        function fallbackTo3D() {
+            updateSupportInfo('Переключаемся на 3D режим');
+            
+            // Показываем простую 3D сцену вместо AR
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Простой котенок для демо
+            const geometry = new THREE.PlaneGeometry(2, 2);
+            const material = new THREE.MeshBasicMaterial({ color: 0x9B59B6 });
+            const plane = new THREE.Mesh(geometry, material);
+            scene.add(plane);
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                plane.rotation.y += 0.01;
+                renderer.render(scene, camera);
+            }
+            animate();
+            
+            statusDiv.style.display = 'none';
+            updateStatus('3D режим активен');
+        }
+        
+        // Обработка изменения размера экрана
+        window.addEventListener('resize', function() {
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
         });
-
-        // Обработка загрузки сцены
-        document.querySelector('a-scene').addEventListener('loaded', function() {
-            updateStatus('AR готов!');
-            loading.style.display = 'none';
-            info.style.display = 'block';
-            markerHint.style.display = 'block';
-            zoomControls.style.display = 'block';
-        });
-
-        // Отслеживание ошибок
-        window.addEventListener('error', function(e) {
-            console.error('Ошибка:', e.error);
-            updateStatus(`Ошибка: ${e.error.message}`);
-        });
-
-        console.log('🐱 AR Котенок NFT загружен с улучшенными настройками камеры!');
+        
+        // Запуск
+        window.addEventListener('load', init);
+        
+        console.log('🌟 WebXR AR Котенок загружен!');
     </script>
 </body>
 </html>
